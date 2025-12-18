@@ -1,0 +1,21 @@
+version: "3.9"
+
+services:
+  web:
+    container_name: bank-flask-app
+    build: .
+    # If you want auto-reload when you edit files locally
+    volumes:
+      - .:/app
+    ports:
+      - "5001:5001"
+    env_file:
+      - dev.env       # SF_USER, SF_PASSWORD, SF_ACCOUNT, etc.
+    environment:
+      FLASK_APP: app.py
+      FLASK_ENV: development    # enables debug / reload
+      # Optional: override or add more env vars here if needed
+      # SF_WAREHOUSE: YOUR_WAREHOUSE
+      # SF_DATABASE: YOUR_DATABASE
+      # SF_SCHEMA: YOUR_SCHEMA
+    command: flask run --host=0.0.0.0 --port=5001

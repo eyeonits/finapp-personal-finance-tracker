@@ -1,0 +1,1 @@
+CREATE OR ALTER SCHEMA FINAPP.STEAMLIT COMMENT = 'Schema for Steamlit app data';

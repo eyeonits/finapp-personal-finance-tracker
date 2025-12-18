@@ -1,0 +1,585 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Home Finance Dashboard</title>
+
+  <link
+    href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"
+    rel="stylesheet"
+  >
+
+  <style>
+    :root{
+      --bg: #f5f5f7;
+      --card-bg: #ffffff;
+      --text: #212529;
+      --muted: #6c757d;
+      --nav-bg: #343a40;
+      --card-shadow: 0 4px 12px rgba(0,0,0,0.04);
+    }
+
+    .dark-mode {
+      --bg: #0f1720;
+      --card-bg: #111318;
+      --text: #e6eef8;
+      --muted: #9aa7b5;
+      --nav-bg: #0b1220;
+      --card-shadow: none;
+    }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+    }
+    .card {
+      background-color: var(--card-bg);
+      color: var(--text);
+      border-radius: 1rem;
+      box-shadow: var(--card-shadow);
+    }
+    .nav-pills .nav-link {
+      border-radius: 999px;
+    }
+    .navbar-dark.bg-dark {
+      background-color: var(--nav-bg) !important;
+    }
+    .text-muted {
+      color: var(--muted) !important;
+    }
+    table.table-striped > tbody > tr:nth-of-type(odd) {
+      background-color: rgba(0,0,0,0.02);
+    }
+    .dark-mode table.table-striped > tbody > tr:nth-of-type(odd) {
+      background-color: rgba(255,255,255,0.02);
+    }
+
+    /* Small helper for the theme toggle */
+    .theme-toggle {
+      display: inline-flex;
+      align-items: center;
+      gap: .5rem;
+      color: var(--text);
+    }
+  </style>
+</head>
+<body class="bg-light">
+
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4">
+  <div class="container-fluid">
+    <a class="navbar-brand fw-semibold" href="{{ url_for('index') }}">Home Finance</a>
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarMain">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse" id="navbarMain">
+      <ul class="navbar-nav ms-auto mb-2 mb-lg-0">
+        <li class="nav-item">
+          <a class="nav-link active" aria-current="page" href="{{ url_for('index') }}">Dashboard</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="{{ url_for('import_dashboard') }}">Import</a>
+        </li>
+        <!-- Theme toggle -->
+        <li class="nav-item d-flex align-items-center ms-3">
+          <div class="form-check form-switch theme-toggle">
+            <input class="form-check-input" type="checkbox" id="themeToggle" aria-label="Toggle dark mode">
+            <label class="form-check-label" for="themeToggle" id="themeToggleLabel">🌙</label>
+          </div>
+        </li>
+      </ul>
+    </div>
+  </div>
+</nav>
+
+<div class="container my-4">
+
+  <!-- HEADER -->
+  <h1 class="mb-1">🏦 Home Finance Dashboard</h1>
+  <p class="text-muted mb-4">
+    Source:
+    <span class="badge bg-info text-dark">{{ source_label }}</span>
+    {% if dataset == 'correlated' %}
+      <span class="badge bg-warning text-dark ms-1">Correlated View</span>
+    {% endif %}
+  </p>
+
+  <!-- FILTERS -->
+  <form method="post" class="row g-3 mb-4">
+
+    <div class="col-md-3">
+      <label class="form-label">Start date</label>
+      <input type="date"
+             class="form-control"
+             name="start_date"
+             value="{{ start_date }}">
+    </div>
+
+    <div class="col-md-3">
+      <label class="form-label">End date</label>
+      <input type="date"
+             class="form-control"
+             name="end_date"
+             value="{{ end_date }}">
+    </div>
+
+    <div class="col-md-3">
+      <label class="form-label">Description contains</label>
+      <input type="text"
+             class="form-control"
+             name="description"
+             value="{{ desc_filter }}">
+    </div>
+
+    <div class="col-md-3">
+      <label class="form-label">Category contains</label>
+      <input type="text"
+             class="form-control"
+             name="category"
+             value="{{ category_filter }}">
+    </div>
+
+    <div class="col-md-3">
+      <label class="form-label">Min Amount</label>
+      <input type="number"
+             step="0.01"
+             class="form-control"
+             name="amount_min"
+             value="{{ amount_min }}">
+    </div>
+
+    <div class="col-md-3">
+      <label class="form-label">Max Amount</label>
+      <input type="number"
+             step="0.01"
+             class="form-control"
+             name="amount_max"
+             value="{{ amount_max }}">
+    </div>
+
+    <!-- DATASET SELECTOR -->
+    <div class="col-md-3">
+      <label class="form-label">Dataset</label>
+      <select class="form-select" name="dataset">
+        <option value="cc" {% if dataset == 'cc' %}selected{% endif %}>
+          Credit Card Transactions
+        </option>
+        <option value="bank" {% if dataset == 'bank' %}selected{% endif %}>
+          Bank Transactions
+        </option>
+        <option value="correlated" {% if dataset == 'correlated' %}selected{% endif %}>
+          Correlated CC ↔ Bank Payments
+        </option>
+      </select>
+    </div>
+
+    <div class="col-md-3 d-flex align-items-end">
+      <button type="submit" class="btn btn-primary w-100">Apply Filters</button>
+    </div>
+
+    <div class="col-md-3 d-flex align-items-end">
+      <a href="{{ url_for('import_dashboard') }}" class="btn btn-secondary w-100">Import Transactions</a>
+    </div>
+  </form>
+
+  <!-- SUMMARY CARDS -->
+  <div class="row mb-4">
+    <div class="col-md-3 mb-3">
+      <div class="card border-0 h-100">
+        <div class="card-body">
+          <h6 class="text-uppercase text-muted mb-2">Transactions</h6>
+          <h3 class="mb-0">{{ num_tx }}</h3>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-md-3 mb-3">
+      <div class="card border-0 h-100">
+        <div class="card-body">
+          <h6 class="text-uppercase text-muted mb-2">Total Spent</h6>
+          <h3 class="mb-0 text-danger">
+            ${{ "{:,.2f}".format(total_spent) }}
+          </h3>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-md-3 mb-3">
+      <div class="card border-0 h-100">
+        <div class="card-body">
+          <h6 class="text-uppercase text-muted mb-2">Total Received</h6>
+          <h3 class="mb-0 text-success">
+            ${{ "{:,.2f}".format(total_received) }}
+          </h3>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-md-3 mb-3">
+      <div class="card border-0 h-100">
+        <div class="card-body">
+          <h6 class="text-uppercase text-muted mb-2">Net Flow</h6>
+          {% if net >= 0 %}
+            <h3 class="mb-0 text-success">${{ "{:,.2f}".format(net) }}</h3>
+          {% else %}
+            <h3 class="mb-0 text-danger">${{ "{:,.2f}".format(net) }}</h3>
+          {% endif %}
+          <div class="text-muted small mt-1">
+            Avg daily spend: ${{ "{:,.2f}".format(avg_daily_spend) }}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MENU TABS -->
+  <ul class="nav nav-pills mb-4" id="dashboardMenu" role="tablist">
+    <li class="nav-item" role="presentation">
+      <button class="nav-link active" id="overview-tab"
+              data-bs-toggle="tab" data-bs-target="#overview"
+              type="button" role="tab">
+        Overview
+      </button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button class="nav-link" id="credit-tab"
+              data-bs-toggle="tab" data-bs-target="#credit"
+              type="button" role="tab">
+        Credit Cards
+      </button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button class="nav-link" id="bank-tab"
+              data-bs-toggle="tab" data-bs-target="#bank"
+              type="button" role="tab">
+        Bank Accounts
+      </button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button class="nav-link" id="tx-tab"
+              data-bs-toggle="tab" data-bs-target="#transactions"
+              type="button" role="tab">
+        Transactions
+      </button>
+    </li>
+  </ul>
+
+  <div class="tab-content" id="dashboardMenuContent">
+
+    <!-- OVERVIEW TAB -->
+    <div class="tab-pane fade show active" id="overview" role="tabpanel" aria-labelledby="overview-tab">
+      <div class="row mb-4">
+        <div class="col-md-8 mb-3">
+          <div class="card h-100">
+            <div class="card-body">
+              <h6 class="text-uppercase text-muted mb-2">Daily Spend</h6>
+              <canvas id="dailySpendChart" height="120"></canvas>
+              {% if not daily_labels %}
+                <div class="text-muted small mt-2">No spend data in this range.</div>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+
+        <div class="col-md-4 mb-3">
+          <div class="card h-100">
+            <div class="card-body">
+              <h6 class="text-uppercase text-muted mb-2">Cash Flow: Spent vs Received</h6>
+              <canvas id="cashFlowChart" height="120"></canvas>
+              <div class="text-muted small mt-2">
+                Spent: ${{ "%.2f"|format(total_spent) }} •
+                Received: ${{ "%.2f"|format(total_received) }}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CREDIT CARDS TAB -->
+    <div class="tab-pane fade" id="credit" role="tabpanel" aria-labelledby="credit-tab">
+      <div class="row mb-4">
+        <div class="col-md-12">
+          <div class="card h-100">
+            <div class="card-body">
+              <h6 class="text-uppercase text-muted mb-2">Credit Card Spend by Category (Top 10)</h6>
+              <canvas id="ccCategoryChart"></canvas>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- BANK TAB -->
+    <div class="tab-pane fade" id="bank" role="tabpanel" aria-labelledby="bank-tab">
+      <div class="row mb-4">
+        <div class="col-md-6">
+          <div class="card h-100">
+            <div class="card-body">
+              <h6 class="text-uppercase text-muted mb-2">Bank Income vs Expenses</h6>
+              <canvas id="bankIncomeExpenseChart"></canvas>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TRANSACTIONS TAB -->
+    <div class="tab-pane fade" id="transactions" role="tabpanel" aria-labelledby="tx-tab">
+
+      <!-- CORRELATED VIEW -->
+      {% if dataset == 'correlated' %}
+        <div class="card mb-4">
+          <div class="card-body">
+            <h5 class="card-title mb-3">Correlated CC Payments ↔ Bank Debits</h5>
+            <p class="text-muted small">
+              Matching credit card payments (AMOUNT &gt; 0) with bank outflows (AMOUNT &lt; 0)
+              of the same amount within a small date window.
+            </p>
+            {% if correlations %}
+              <div class="table-responsive">
+                <table class="table table-striped table-hover table-sm align-middle">
+                  <thead>
+                  <tr>
+                    <th>Amount</th>
+                    <th>CC Date</th>
+                    <th>CC Description</th>
+                    <th>Bank Date</th>
+                    <th>Bank Description</th>
+                    <th>Bank Type</th>
+                    <th class="text-end">Date Diff (days)</th>
+                  </tr>
+                  </thead>
+                  <tbody>
+                  {% for c in correlations %}
+                    <tr>
+                      <td>${{ "{:,.2f}".format(c.amount) }}</td>
+                      <td>{{ c.cc_date }}</td>
+                      <td>{{ c.cc_desc }}</td>
+                      <td>{{ c.bank_date }}</td>
+                      <td>{{ c.bank_desc }}</td>
+                      <td>{{ c.bank_type }}</td>
+                      <td class="text-end">{{ c.date_diff }}</td>
+                    </tr>
+                  {% endfor %}
+                  </tbody>
+                </table>
+              </div>
+            {% else %}
+              <div class="text-muted small">No correlated payments found for this range.</div>
+            {% endif %}
+          </div>
+        </div>
+      {% endif %}
+
+      <!-- TRANSACTIONS TABLE -->
+      <div class="card mb-4">
+        <div class="card-body">
+          <h5 class="card-title mb-3">Transactions</h5>
+          <div class="table-responsive">
+            <table class="table table-striped table-hover table-sm align-middle">
+              <thead>
+              <tr>
+                <th>Transaction Date</th>
+                <th>Post Date</th>
+                <th>Description</th>
+                <th>Category</th>
+                <th>Type</th>
+                <th>Account</th>
+                <th class="text-end">Amount</th>
+                <th>Memo</th>
+              </tr>
+              </thead>
+              <tbody>
+              {% for row in rows %}
+                <tr>
+                  <td>{{ row["TRANSACTION_DATE"] }}</td>
+                  <td>{{ row["POST_DATE"] }}</td>
+                  <td>{{ row["DESCRIPTION"] }}</td>
+                  <td>{{ row["CATEGORY"] }}</td>
+                  <td>{{ row["TYPE"] }}</td>
+                  <td>{{ row.get("ACCOUNT_ID", "") }}</td>
+                  <td class="text-end">
+                    ${{ "{:,.2f}".format(row["AMOUNT"]) }}
+                  </td>
+                  <td>{{ row["MEMO"] }}</td>
+                </tr>
+              {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+
+<!-- JS libs -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<!-- Existing charts: daily spend + cash flow -->
+<script>
+  const dailyLabels = {{ daily_labels|tojson }};
+  const dailySpend = {{ daily_spend|tojson }};
+
+  const totalSpent = {{ total_spent|tojson }};
+  const totalReceived = {{ total_received|tojson }};
+
+  if (dailyLabels.length > 0) {
+    const dailyCanvas = document.getElementById('dailySpendChart');
+    if (dailyCanvas) {
+      const ctxDaily = dailyCanvas.getContext('2d');
+      new Chart(ctxDaily, {
+        type: 'line',
+        data: {
+          labels: dailyLabels,
+          datasets: [{
+            label: 'Daily Spend',
+            data: dailySpend,
+            fill: true,
+            tension: 0.3
+          }]
+        },
+        options: {
+          plugins: { legend: { display: false } },
+          scales: { y: { beginAtZero: true } }
+        }
+      });
+    }
+  }
+
+  const cashCanvas = document.getElementById('cashFlowChart');
+  if (cashCanvas) {
+    const ctxCash = cashCanvas.getContext('2d');
+    new Chart(ctxCash, {
+      type: 'doughnut',
+      data: {
+        labels: ['Spent', 'Received'],
+        datasets: [{
+          data: [totalSpent, totalReceived]
+        }]
+      },
+      options: {
+        plugins: {
+          legend: { position: 'bottom' }
+        }
+      }
+    });
+  }
+</script>
+
+<!-- New charts: CC categories + bank income vs expenses -->
+<script>
+  // Data injected from Flask
+  const ccCategoryLabels = {{ cc_category_labels | safe }};
+  const ccCategoryValues = {{ cc_category_values | safe }};
+
+  const bankIncomeExpenseLabels = {{ bank_income_expense_labels | safe }};
+  const bankIncomeExpenseValues = {{ bank_income_expense_values | safe }};
+
+  // Credit card spend by category (bar chart)
+  const ccCanvas = document.getElementById('ccCategoryChart');
+  if (ccCanvas) {
+    const ctxCcCat = ccCanvas.getContext('2d');
+    new Chart(ctxCcCat, {
+      type: 'bar',
+      data: {
+        labels: ccCategoryLabels,
+        datasets: [{
+          label: 'Spend',
+          data: ccCategoryValues,
+        }]
+      },
+      options: {
+        plugins: {
+          title: {
+            display: false
+          },
+          legend: {
+            display: false
+          }
+        },
+        scales: {
+          y: {
+            beginAtZero: true
+          }
+        }
+      }
+    });
+  }
+
+  // Bank income vs expenses (doughnut chart)
+  const bankCanvas = document.getElementById('bankIncomeExpenseChart');
+  if (bankCanvas) {
+    const ctxBankIE = bankCanvas.getContext('2d');
+    new Chart(ctxBankIE, {
+      type: 'doughnut',
+      data: {
+        labels: bankIncomeExpenseLabels,
+        datasets: [{
+          data: bankIncomeExpenseValues,
+        }]
+      },
+      options: {
+        plugins: {
+          title: {
+            display: false
+          }
+        }
+      }
+    });
+  }
+</script>
+
+<!-- Theme toggle script -->
+<script>
+  (function(){
+    const toggle = document.getElementById('themeToggle');
+    const label = document.getElementById('themeToggleLabel');
+
+    // Determine initial theme: localStorage -> prefers-color-scheme -> light
+    const saved = localStorage.getItem('hf_theme');
+    const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const initial = saved || (prefersDark ? 'dark' : 'light');
+
+    function applyTheme(theme){
+      if(theme === 'dark'){
+        document.documentElement.classList.add('dark-mode');
+        document.body.classList.remove('bg-light'); // remove bootstrap light bg if present
+        toggle.checked = true;
+        label.textContent = '🌙';
+      } else {
+        document.documentElement.classList.remove('dark-mode');
+        document.body.classList.add('bg-light');
+        toggle.checked = false;
+        label.textContent = '☀️';
+      }
+      localStorage.setItem('hf_theme', theme);
+      // If charts are present, trigger a resize so they can repaint with new page colors
+      window.dispatchEvent(new Event('resize'));
+    }
+
+    // Init
+    applyTheme(initial);
+
+    // Listen for toggle changes
+    toggle.addEventListener('change', (e) => {
+      applyTheme(e.target.checked ? 'dark' : 'light');
+    });
+
+    // Also respond to system theme changes (optional)
+    if(window.matchMedia){
+      window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
+        const savedTheme = localStorage.getItem('hf_theme');
+        if(!savedTheme){ // only auto-switch if user hasn't set a manual preference
+          applyTheme(e.matches ? 'dark' : 'light');
+        }
+      });
+    }
+  })();
+</script>
+
+</body>
+</html>

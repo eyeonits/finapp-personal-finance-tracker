@@ -1,0 +1,23 @@
+services:
+  flyway:
+    image: flyway/flyway:latest
+    container_name: flyway
+    volumes:
+      - ./databases:/flyway/sql:ro
+      - ./flyway/logging/logback.xml:/flyway/conf/logback.xml:ro
+    environment:
+      # Set these in a .env file (see example below)
+      FLYWAY_URL: ${SNOWFLAKE_URL}
+      FLYWAY_USER: ${SNOWFLAKE_USER}
+      FLYWAY_PASSWORD: ${SNOWFLAKE_PASSWORD}
+      FLYWAY_SCHEMAS: FLYWAY
+      FLYWAY_LOG_LEVEL: off   # 👈 Suppress INFO logs
+            # Tell the JVM/driver to use JUL + our logging.properties
+      JAVA_TOOL_OPTIONS: >-
+        -Dnet.snowflake.jdbc.loggerImpl=net.snowflake.client.log.JDK14Logger
+        -Djava.util.logging.config.file=/flyway/conf/logging.properties
+    command: ["-connectRetries=5", "info"]
+    # If SQL Server runs in another container on the same compose network,
+    # you can add: depends_on: [mssql]
+
+

@@ -1,0 +1,278 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Import Transactions</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+  >
+  <style>
+    body {
+      background-color: #0b0c10;
+      color: #e5e5e5;
+    }
+    .navbar {
+      border-bottom: 1px solid #222;
+    }
+    .card {
+      background-color: #15171f;
+      border: 1px solid #222;
+      border-radius: 1rem;
+    }
+    .card-header {
+      background-color: #15171f;
+      border-bottom: 1px solid #222;
+      font-weight: 600;
+    }
+    .form-control,
+    .form-select {
+      background-color: #111319;
+      border-color: #333;
+      color: #e5e5e5;
+    }
+    .form-control:focus,
+    .form-select:focus {
+      background-color: #111319;
+      border-color: #0d6efd;
+      box-shadow: 0 0 0 0.2rem rgba(13,110,253,.25);
+      color: #e5e5e5;
+    }
+    .form-text {
+      color: #9b9b9b;
+    }
+    .alert-danger {
+      background-color: #3b1517;
+      border-color: #642026;
+      color: #f8d7da;
+    }
+    .nav-tabs {
+      border-bottom: 1px solid #222;
+    }
+    .nav-tabs .nav-link {
+      color: #b5b5b5;
+      border: 1px solid transparent;
+    }
+    .nav-tabs .nav-link:hover {
+      border-color: transparent;
+      color: #ffffff;
+    }
+    .nav-tabs .nav-link.active {
+      background-color: #15171f;
+      border-color: #222 #222 #15171f;
+      color: #ffffff;
+    }
+    .btn-primary {
+      border-radius: 999px;
+    }
+  </style>
+</head>
+<body>
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4">
+  <div class="container-fluid">
+    <a class="navbar-brand" href="{{ url_for('index') }}">Home Finance</a>
+    <div class="navbar-nav">
+      <a class="nav-link" href="{{ url_for('index') }}">Dashboard</a>
+      <a class="nav-link active" aria-current="page" href="{{ url_for('import_dashboard') }}">Import</a>
+    </div>
+  </div>
+      <!-- Theme toggle button -->
+        <li class="nav-item d-flex align-items-center ms-3">
+          <div class="form-check form-switch theme-toggle">
+            <input class="form-check-input" type="checkbox" id="themeToggle" aria-label="Toggle dark mode">
+            <label class="form-check-label" for="themeToggle" id="themeToggleLabel">🌙</label>
+          </div>
+        </li>
+</nav>
+
+<div class="container">
+
+  <h1 class="mb-4">Import Transactions</h1>
+
+  <!-- Tabs -->
+  <ul class="nav nav-tabs mb-3" id="importTabs" role="tablist">
+    <li class="nav-item" role="presentation">
+      <button
+        class="nav-link {% if active_tab == 'cc' %}active{% endif %}"
+        id="cc-tab"
+        data-bs-toggle="tab"
+        data-bs-target="#cc-pane"
+        type="button" role="tab">
+        Credit Card
+      </button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button
+        class="nav-link {% if active_tab == 'bank' %}active{% endif %}"
+        id="bank-tab"
+        data-bs-toggle="tab"
+        data-bs-target="#bank-pane"
+        type="button" role="tab">
+        Bank
+      </button>
+    </li>
+  </ul>
+
+  <div class="tab-content" id="importTabsContent">
+
+    <!-- CREDIT CARD TAB -->
+    <div
+      class="tab-pane fade {% if active_tab == 'cc' %}show active{% endif %}"
+      id="cc-pane" role="tabpanel" aria-labelledby="cc-tab">
+
+      {% if cc_error %}
+        <div class="alert alert-danger" role="alert">
+          {{ cc_error }}
+        </div>
+      {% endif %}
+
+      <div class="card mb-4">
+        <div class="card-header">
+          Upload Credit Card CSV
+        </div>
+        <div class="card-body">
+          <form method="post" enctype="multipart/form-data">
+            <input type="hidden" name="import_type" value="cc">
+
+            <div class="mb-3">
+              <label for="cc_file" class="form-label">CSV file</label>
+              <input class="form-control" type="file" id="cc_file" name="file" accept=".csv">
+              <div class="form-text">
+                Supports your existing card CSV format, Apple Card, and Amex exports.
+              </div>
+            </div>
+
+            <div class="mb-3">
+              <label for="cc_account_id" class="form-label">Account ID</label>
+              <input class="form-control" type="text" id="cc_account_id" name="account_id" placeholder="e.g. cc_apple">
+              <div class="form-text">
+                This is the same value you use with <code>--account-id</code> on the CLI.
+              </div>
+            </div>
+
+            <button type="submit" class="btn btn-primary">Run Credit Card Import</button>
+          </form>
+        </div>
+      </div>
+
+      {% if cc_summary %}
+        <div class="card mb-4">
+          <div class="card-header">
+            Credit Card Import Summary
+          </div>
+          <div class="card-body">
+            <p class="mb-1"><strong>Account:</strong> {{ cc_summary.account_id }}</p>
+            <p class="mb-3"><strong>Rows in file:</strong> {{ cc_summary.rows_in_file }}</p>
+
+            <table class="table table-sm table-bordered w-auto table-dark">
+              <thead>
+              <tr>
+                <th scope="col">Metric</th>
+                <th scope="col">Value</th>
+              </tr>
+              </thead>
+              <tbody>
+              <tr>
+                <td>Rows prepared</td>
+                <td>{{ cc_summary.rows_prepared }}</td>
+              </tr>
+              <tr>
+                <td>Rows inserted</td>
+                <td>{{ cc_summary.rows_inserted }}</td>
+              </tr>
+              <tr>
+                <td>Rows updated</td>
+                <td>{{ cc_summary.rows_updated }}</td>
+              </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      {% endif %}
+    </div>
+
+    <!-- BANK TAB -->
+    <div
+      class="tab-pane fade {% if active_tab == 'bank' %}show active{% endif %}"
+      id="bank-pane" role="tabpanel" aria-labelledby="bank-tab">
+
+      {% if bank_error %}
+        <div class="alert alert-danger" role="alert">
+          {{ bank_error }}
+        </div>
+      {% endif %}
+
+      <div class="card mb-4">
+        <div class="card-header">
+          Upload Bank CSV
+        </div>
+        <div class="card-body">
+          <form method="post" enctype="multipart/form-data">
+            <input type="hidden" name="import_type" value="bank">
+
+            <div class="mb-3">
+              <label for="bank_file" class="form-label">CSV file</label>
+              <input class="form-control" type="file" id="bank_file" name="file" accept=".csv">
+              <div class="form-text">
+                Supports your bank transaction CSV export format.
+              </div>
+            </div>
+
+            <div class="mb-3">
+              <label for="bank_account_id" class="form-label">Account ID</label>
+              <input class="form-control" type="text" id="bank_account_id" name="account_id" placeholder="e.g. bank_main">
+              <div class="form-text">
+                This is the same value you use with <code>--account-id</code> on the CLI.
+              </div>
+            </div>
+
+            <button type="submit" class="btn btn-primary">Run Bank Import</button>
+          </form>
+        </div>
+      </div>
+
+      {% if bank_summary %}
+        <div class="card mb-4">
+          <div class="card-header">
+            Bank Import Summary
+          </div>
+          <div class="card-body">
+            <p class="mb-1"><strong>Account:</strong> {{ bank_summary.account_id }}</p>
+            <p class="mb-3"><strong>Rows in file:</strong> {{ bank_summary.rows_in_file }}</p>
+
+            <table class="table table-sm table-bordered w-auto table-dark">
+              <thead>
+              <tr>
+                <th scope="col">Metric</th>
+                <th scope="col">Value</th>
+              </tr>
+              </thead>
+              <tbody>
+              <tr>
+                <td>Rows prepared</td>
+                <td>{{ bank_summary.rows_prepared }}</td>
+              </tr>
+              <tr>
+                <td>Rows inserted</td>
+                <td>{{ bank_summary.rows_inserted }}</td>
+              </tr>
+              <tr>
+                <td>Rows updated</td>
+                <td>{{ bank_summary.rows_updated }}</td>
+              </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      {% endif %}
+    </div>
+
+  </div>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
