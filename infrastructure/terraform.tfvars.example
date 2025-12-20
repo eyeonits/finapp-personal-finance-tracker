@@ -1,0 +1,21 @@
+# Copy this file to terraform.tfvars and fill in the values
+# DO NOT commit terraform.tfvars to git!
+
+# Environment
+environment = "dev"
+aws_region  = "us-east-1"
+
+# Database Configuration
+db_instance_class    = "db.t4g.micro"  # Free tier eligible
+db_allocated_storage = 20              # Free tier: up to 20GB
+db_name              = "finapp"
+db_username          = "finapp_admin"
+db_password          = "CHANGE_ME_TO_A_STRONG_PASSWORD"
+
+# Set to true if you need to connect from your local machine
+db_publicly_accessible = false
+
+# Your IP address for direct database access (find yours at https://whatismyip.com)
+# Leave empty to disable external access
+allowed_ip = ""
+

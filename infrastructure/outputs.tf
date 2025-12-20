@@ -24,3 +24,33 @@ output "app_client_secret" {
   sensitive   = true
 }
 
+# -----------------------------------------------------------------------------
+# RDS PostgreSQL Outputs
+# -----------------------------------------------------------------------------
+
+output "db_endpoint" {
+  description = "RDS instance endpoint"
+  value       = aws_db_instance.finapp.endpoint
+}
+
+output "db_address" {
+  description = "RDS instance address (hostname only)"
+  value       = aws_db_instance.finapp.address
+}
+
+output "db_port" {
+  description = "RDS instance port"
+  value       = aws_db_instance.finapp.port
+}
+
+output "db_name" {
+  description = "Database name"
+  value       = aws_db_instance.finapp.db_name
+}
+
+output "db_connection_string" {
+  description = "PostgreSQL connection string (without password)"
+  value       = "postgresql://${var.db_username}:<password>@${aws_db_instance.finapp.endpoint}/${aws_db_instance.finapp.db_name}"
+  sensitive   = false
+}
+
