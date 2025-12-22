@@ -1,0 +1,22 @@
+# Lambda Container Image for FastAPI
+# Based on AWS Lambda Python runtime
+
+FROM public.ecr.aws/lambda/python:3.11
+
+# Install system dependencies for asyncpg
+RUN yum install -y gcc python3-devel postgresql-devel && \
+    yum clean all
+
+# Copy requirements and install dependencies
+COPY requirements.txt ${LAMBDA_TASK_ROOT}/
+RUN pip install --no-cache-dir -r ${LAMBDA_TASK_ROOT}/requirements.txt
+
+# Install Mangum for Lambda/ASGI adapter
+RUN pip install --no-cache-dir mangum==0.17.0
+
+# Copy application code
+COPY . ${LAMBDA_TASK_ROOT}/
+
+# Set the handler
+CMD ["api.lambda_handler.handler"]
+

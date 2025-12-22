@@ -56,3 +56,25 @@ variable "allowed_ip" {
   default     = ""
 }
 
+# -----------------------------------------------------------------------------
+# Lambda Variables
+# -----------------------------------------------------------------------------
+
+variable "lambda_memory_size" {
+  description = "Lambda memory size in MB (128-10240)"
+  type        = number
+  default     = 512
+}
+
+variable "lambda_timeout" {
+  description = "Lambda timeout in seconds (max 900 for API Gateway)"
+  type        = number
+  default     = 30
+}
+
+variable "cors_origins" {
+  description = "Comma-separated list of allowed CORS origins"
+  type        = string
+  default     = "http://localhost:3000,http://localhost:5173"
+}
+

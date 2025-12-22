@@ -5,7 +5,9 @@
 environment = "dev"
 aws_region  = "us-east-1"
 
+# -----------------------------------------------------------------------------
 # Database Configuration
+# -----------------------------------------------------------------------------
 db_instance_class    = "db.t4g.micro"  # Free tier eligible
 db_allocated_storage = 20              # Free tier: up to 20GB
 db_name              = "finapp"
@@ -18,4 +20,14 @@ db_publicly_accessible = false
 # Your IP address for direct database access (find yours at https://whatismyip.com)
 # Leave empty to disable external access
 allowed_ip = ""
+
+# -----------------------------------------------------------------------------
+# Lambda Configuration
+# -----------------------------------------------------------------------------
+lambda_memory_size = 512   # MB (128-10240), higher = faster cold starts
+lambda_timeout     = 30    # seconds (max 900)
+
+# CORS origins (comma-separated)
+# Update with your CloudFront URL after frontend deployment
+cors_origins = "http://localhost:3000,http://localhost:5173"
 

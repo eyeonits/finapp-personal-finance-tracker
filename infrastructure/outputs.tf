@@ -54,3 +54,45 @@ output "db_connection_string" {
   sensitive   = false
 }
 
+# -----------------------------------------------------------------------------
+# ECR Outputs
+# -----------------------------------------------------------------------------
+
+output "ecr_repository_url" {
+  description = "ECR repository URL for API container images"
+  value       = aws_ecr_repository.api.repository_url
+}
+
+output "ecr_repository_name" {
+  description = "ECR repository name"
+  value       = aws_ecr_repository.api.name
+}
+
+# -----------------------------------------------------------------------------
+# Lambda Outputs
+# -----------------------------------------------------------------------------
+
+output "lambda_function_name" {
+  description = "Lambda function name"
+  value       = aws_lambda_function.api.function_name
+}
+
+output "lambda_function_arn" {
+  description = "Lambda function ARN"
+  value       = aws_lambda_function.api.arn
+}
+
+# -----------------------------------------------------------------------------
+# API Gateway Outputs
+# -----------------------------------------------------------------------------
+
+output "api_gateway_url" {
+  description = "API Gateway endpoint URL"
+  value       = aws_apigatewayv2_stage.default.invoke_url
+}
+
+output "api_gateway_id" {
+  description = "API Gateway ID"
+  value       = aws_apigatewayv2_api.api.id
+}
+
