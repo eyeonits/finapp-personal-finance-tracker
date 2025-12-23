@@ -96,3 +96,32 @@ output "api_gateway_id" {
   value       = aws_apigatewayv2_api.api.id
 }
 
+# -----------------------------------------------------------------------------
+# Frontend (S3 + CloudFront) Outputs
+# -----------------------------------------------------------------------------
+
+output "frontend_bucket_name" {
+  description = "S3 bucket name for frontend assets"
+  value       = aws_s3_bucket.frontend.id
+}
+
+output "frontend_bucket_arn" {
+  description = "S3 bucket ARN for frontend assets"
+  value       = aws_s3_bucket.frontend.arn
+}
+
+output "cloudfront_distribution_id" {
+  description = "CloudFront distribution ID (for cache invalidation)"
+  value       = aws_cloudfront_distribution.frontend.id
+}
+
+output "cloudfront_domain_name" {
+  description = "CloudFront domain name"
+  value       = aws_cloudfront_distribution.frontend.domain_name
+}
+
+output "frontend_url" {
+  description = "Frontend URL (HTTPS)"
+  value       = var.domain_name != "" ? "https://${var.frontend_subdomain != "" ? "${var.frontend_subdomain}." : ""}${var.domain_name}" : "https://${aws_cloudfront_distribution.frontend.domain_name}"
+}
+

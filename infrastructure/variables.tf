@@ -78,3 +78,31 @@ variable "cors_origins" {
   default     = "http://localhost:3000,http://localhost:5173"
 }
 
+# -----------------------------------------------------------------------------
+# Custom Domain Variables (Optional)
+# -----------------------------------------------------------------------------
+
+variable "domain_name" {
+  description = "Custom domain name (e.g., 'example.com'). Leave empty to use AWS default domains."
+  type        = string
+  default     = ""
+}
+
+variable "frontend_subdomain" {
+  description = "Subdomain for frontend (e.g., 'app' for app.example.com). Leave empty to use root domain."
+  type        = string
+  default     = ""
+}
+
+variable "api_subdomain" {
+  description = "Subdomain for API (e.g., 'api' for api.example.com)"
+  type        = string
+  default     = "api"
+}
+
+variable "use_route53" {
+  description = "Whether to use Route 53 for DNS (set to false if using external DNS)"
+  type        = bool
+  default     = true
+}
+
