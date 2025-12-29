@@ -666,6 +666,13 @@ export default function Dashboard() {
                 )}
               </button>
               <span className="text-sm text-gray-700 dark:text-gray-300">{user?.email}</span>
+              <Link
+                to="/change-password"
+                className="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200"
+              >
+                Change Password
+              </Link>
+              <span className="text-gray-300 dark:text-gray-600">|</span>
               <button
                 onClick={logout}
                 className="text-sm text-indigo-600 dark:text-indigo-400 hover:text-indigo-500 dark:hover:text-indigo-300"
