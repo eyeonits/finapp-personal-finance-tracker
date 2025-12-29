@@ -1,16 +1,3 @@
-terraform {
-  required_providers {
-    aws = {
-      source  = "hashicorp/aws"
-      version = "~> 5.0"
-    }
-  }
-}
-
-provider "aws" {
-  region = var.aws_region
-}
-
 # Cognito User Pool
 resource "aws_cognito_user_pool" "finapp" {
   name = "finapp-${var.environment}"
