@@ -1,5 +1,6 @@
 """
 JWT token validation utilities.
+Supports both Cognito (RS256) and local (HS256) authentication modes.
 """
 from typing import Dict, Any
 import requests
@@ -17,12 +18,17 @@ def get_cognito_public_keys() -> Dict[str, Any]:
     Fetch Cognito public keys (JWKS) for token validation.
     Cached to avoid repeated requests.
     
+    Only used when USE_COGNITO=True.
+    
     Returns:
         Dictionary containing JWKS keys
         
     Raises:
         AuthenticationError: If keys cannot be fetched
     """
+    if not settings.USE_COGNITO:
+        raise AuthenticationError("Cognito is not enabled")
+    
     jwks_url = (
         f"https://cognito-idp.{settings.COGNITO_REGION}.amazonaws.com/"
         f"{settings.COGNITO_USER_POOL_ID}/.well-known/jwks.json"
@@ -39,6 +45,8 @@ def get_cognito_public_keys() -> Dict[str, Any]:
 def get_signing_key(token: str) -> str:
     """
     Extract the signing key from JWKS based on token's kid header.
+    
+    Only used for Cognito tokens (RS256).
     
     Args:
         token: JWT token string
@@ -73,6 +81,28 @@ def get_signing_key(token: str) -> str:
 
 def decode_jwt_token(token: str) -> Dict[str, Any]:
     """
+    Decode and validate JWT token.
+    
+    Automatically detects whether to use Cognito or local validation
+    based on the USE_COGNITO setting.
+    
+    Args:
+        token: JWT token string
+        
+    Returns:
+        Token payload containing claims (sub, email, etc.)
+        
+    Raises:
+        AuthenticationError: If token is invalid, expired, or malformed
+    """
+    if settings.USE_COGNITO:
+        return decode_cognito_token(token)
+    else:
+        return decode_local_token(token)
+
+
+def decode_cognito_token(token: str) -> Dict[str, Any]:
+    """
     Decode and validate JWT token from Cognito.
     
     Validates:
@@ -104,7 +134,7 @@ def decode_jwt_token(token: str) -> Dict[str, Any]:
         payload = jwt.decode(
             token,
             signing_key,
-            algorithms=[settings.JWT_ALGORITHM],
+            algorithms=["RS256"],
             audience=settings.COGNITO_APP_CLIENT_ID,
             issuer=issuer,
             options={
@@ -114,6 +144,52 @@ def decode_jwt_token(token: str) -> Dict[str, Any]:
                 'verify_iss': True,
             }
         )
+        
+        return payload
+        
+    except ExpiredSignatureError:
+        raise AuthenticationError("Token has expired")
+    except JWTClaimsError as e:
+        raise AuthenticationError(f"Invalid token claims: {str(e)}")
+    except JWTError as e:
+        raise AuthenticationError(f"Invalid token: {str(e)}")
+    except Exception as e:
+        raise AuthenticationError(f"Token validation failed: {str(e)}")
+
+
+def decode_local_token(token: str) -> Dict[str, Any]:
+    """
+    Decode and validate JWT token for local authentication.
+    
+    Validates:
+    - Token signature using JWT_SECRET_KEY
+    - Token expiration
+    - Token type (access token, not refresh)
+    
+    Args:
+        token: JWT token string
+        
+    Returns:
+        Token payload containing claims (sub, email, etc.)
+        
+    Raises:
+        AuthenticationError: If token is invalid, expired, or malformed
+    """
+    try:
+        payload = jwt.decode(
+            token,
+            settings.JWT_SECRET_KEY,
+            algorithms=[settings.JWT_ALGORITHM],
+            options={
+                'verify_signature': True,
+                'verify_exp': True,
+            }
+        )
+        
+        # Verify it's an access token (not refresh)
+        token_type = payload.get("token_type", "access")
+        if token_type == "refresh":
+            raise AuthenticationError("Cannot use refresh token for authentication")
         
         return payload
         

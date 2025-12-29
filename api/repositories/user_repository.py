@@ -62,6 +62,8 @@ class UserRepository(BaseRepository):
                     'user_id': user.user_id,
                     'cognito_sub': user.cognito_sub,
                     'email': user.email,
+                    'password_hash': user.password_hash,
+                    'email_verified': getattr(user, 'email_verified', True),
                     'created_at': user.created_at,
                     'updated_at': user.updated_at,
                     'is_active': user.is_active
@@ -71,13 +73,54 @@ class UserRepository(BaseRepository):
         except Exception as e:
             raise DatabaseError(f"Failed to get user by email: {str(e)}")
     
-    async def create_user(self, cognito_sub: str, email: str) -> Dict[str, Any]:
+    async def get_user_by_id(self, user_id: str) -> Optional[Dict[str, Any]]:
+        """
+        Get user by user_id.
+        
+        Args:
+            user_id: User database ID
+            
+        Returns:
+            User dictionary if found, None otherwise
+        """
+        try:
+            stmt = select(User).where(User.user_id == user_id)
+            result = await self.db.execute(stmt)
+            user = result.scalar_one_or_none()
+            
+            if user:
+                return {
+                    'user_id': user.user_id,
+                    'cognito_sub': user.cognito_sub,
+                    'email': user.email,
+                    'password_hash': user.password_hash,
+                    'email_verified': getattr(user, 'email_verified', True),
+                    'created_at': user.created_at,
+                    'updated_at': user.updated_at,
+                    'is_active': user.is_active
+                }
+            return None
+            
+        except Exception as e:
+            raise DatabaseError(f"Failed to get user by id: {str(e)}")
+    
+    async def create_user(
+        self,
+        cognito_sub: str = None,
+        email: str = None,
+        user_id: str = None,
+        password_hash: str = None,
+        email_verified: bool = False,
+    ) -> Dict[str, Any]:
         """
         Create a new user.
         
         Args:
-            cognito_sub: Cognito user identifier
+            cognito_sub: Cognito user identifier (optional for local auth)
             email: User email address
+            user_id: Optional user ID (auto-generated if not provided)
+            password_hash: Hashed password for local auth
+            email_verified: Whether email is verified
             
         Returns:
             Created user dictionary
@@ -90,8 +133,14 @@ class UserRepository(BaseRepository):
             user = User(
                 cognito_sub=cognito_sub,
                 email=email,
+                password_hash=password_hash,
+                email_verified=email_verified,
                 is_active=True
             )
+            
+            # Override auto-generated user_id if provided
+            if user_id:
+                user.user_id = user_id
             
             self.db.add(user)
             await self.db.flush()
@@ -117,3 +166,27 @@ class UserRepository(BaseRepository):
         except Exception as e:
             await self.db.rollback()
             raise DatabaseError(f"Failed to create user: {str(e)}")
+    
+    async def update_password(self, user_id: str, password_hash: str) -> None:
+        """
+        Update user password hash.
+        
+        Args:
+            user_id: User database ID
+            password_hash: New hashed password
+            
+        Raises:
+            DatabaseError: If database operation fails
+        """
+        try:
+            stmt = select(User).where(User.user_id == user_id)
+            result = await self.db.execute(stmt)
+            user = result.scalar_one_or_none()
+            
+            if user:
+                user.password_hash = password_hash
+                await self.db.flush()
+                
+        except Exception as e:
+            await self.db.rollback()
+            raise DatabaseError(f"Failed to update password: {str(e)}")

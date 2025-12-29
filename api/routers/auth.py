@@ -1,17 +1,20 @@
 """
 Authentication endpoints.
+Supports both Cognito and local authentication based on USE_COGNITO setting.
 """
+from typing import Union
 from fastapi import APIRouter, Depends, HTTPException, status
 
+from api.config import settings
 from api.models.requests import (
     RegisterRequest,
     LoginRequest,
     RefreshTokenRequest,
     ForgotPasswordRequest,
     ResetPasswordRequest,
+    ChangePasswordRequest,
 )
 from api.models.responses import TokenResponse, UserResponse
-from api.services.auth_service import AuthService
 from api.services.user_service import UserService
 from api.dependencies import get_auth_service, get_user_service, get_current_user_id
 from api.utils.exceptions import (
@@ -21,13 +24,19 @@ from api.utils.exceptions import (
 )
 from api.utils.jwt_utils import decode_jwt_token
 
+# Import the appropriate auth service type for type hints
+if settings.USE_COGNITO:
+    from api.services.auth_service import AuthService as AuthServiceType
+else:
+    from api.services.local_auth_service import LocalAuthService as AuthServiceType
+
 router = APIRouter()
 
 
 @router.post("/register", status_code=status.HTTP_201_CREATED)
 async def register(
     request: RegisterRequest,
-    auth_service: AuthService = Depends(get_auth_service),
+    auth_service = Depends(get_auth_service),
 ):
     """
     Register a new user.
@@ -72,14 +81,15 @@ async def register(
 @router.post("/login", response_model=TokenResponse)
 async def login(
     request: LoginRequest,
-    auth_service: AuthService = Depends(get_auth_service),
+    auth_service = Depends(get_auth_service),
     user_service: UserService = Depends(get_user_service),
 ):
     """
     Login and get authentication tokens.
     
-    Authenticates user against AWS Cognito and returns JWT tokens.
-    Creates user record in local database on first login.
+    Authenticates user and returns JWT tokens.
+    - With USE_COGNITO=True: Uses AWS Cognito
+    - With USE_COGNITO=False: Uses local database authentication
     
     Args:
         request: Login request with email and password
@@ -93,16 +103,18 @@ async def login(
         401: Invalid credentials or email not verified
     """
     try:
-        # Authenticate with Cognito
+        # Authenticate (works for both Cognito and local auth)
         tokens = await auth_service.login(request.email, request.password)
         
-        # Decode token to get user info
-        payload = decode_jwt_token(tokens["access_token"])
-        cognito_sub = payload.get("sub")
-        email = payload.get("email", request.email)
-        
-        # Create or get user in local database
-        await user_service.get_or_create_user(cognito_sub, email)
+        # For Cognito, we need to ensure user exists in local DB
+        if settings.USE_COGNITO:
+            # Decode token to get user info
+            payload = decode_jwt_token(tokens["access_token"])
+            cognito_sub = payload.get("sub")
+            email = payload.get("email", request.email)
+            
+            # Create or get user in local database
+            await user_service.get_or_create_user(cognito_sub, email)
         
         return TokenResponse(
             access_token=tokens["access_token"],
@@ -120,7 +132,7 @@ async def login(
 @router.post("/refresh", response_model=TokenResponse)
 async def refresh(
     request: RefreshTokenRequest,
-    auth_service: AuthService = Depends(get_auth_service),
+    auth_service = Depends(get_auth_service),
 ):
     """
     Refresh access token using refresh token.
@@ -174,7 +186,7 @@ async def logout(
 @router.post("/forgot-password")
 async def forgot_password(
     request: ForgotPasswordRequest,
-    auth_service: AuthService = Depends(get_auth_service),
+    auth_service = Depends(get_auth_service),
 ):
     """
     Request password reset.
@@ -204,7 +216,7 @@ async def forgot_password(
 @router.post("/reset-password")
 async def reset_password(
     request: ResetPasswordRequest,
-    auth_service: AuthService = Depends(get_auth_service),
+    auth_service = Depends(get_auth_service),
 ):
     """
     Reset password with verification code.
@@ -227,6 +239,63 @@ async def reset_password(
         )
         return {
             "message": "Password reset successful. Please login with your new password.",
+            "success": result["success"],
+        }
+    except ValidationError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"error": {"code": "VALIDATION_ERROR", "message": str(e)}},
+        )
+    except AuthenticationError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"error": {"code": "AUTH_ERROR", "message": str(e)}},
+        )
+
+
+@router.post("/change-password")
+async def change_password(
+    request: ChangePasswordRequest,
+    user_id: str = Depends(get_current_user_id),
+    auth_service = Depends(get_auth_service),
+):
+    """
+    Change password for authenticated user.
+    
+    Requires the user to be logged in and provide their current password.
+    Only available with local authentication (USE_COGNITO=false).
+    
+    Args:
+        request: Change password request with current and new password
+        user_id: Current user ID from JWT token
+        auth_service: Authentication service instance
+        
+    Returns:
+        Success message
+        
+    Raises:
+        400: Current password incorrect or new password doesn't meet requirements
+        401: Not authenticated
+        501: Not supported with Cognito authentication
+    """
+    # Check if using local auth
+    if settings.USE_COGNITO:
+        raise HTTPException(
+            status_code=status.HTTP_501_NOT_IMPLEMENTED,
+            detail={
+                "error": {
+                    "code": "NOT_SUPPORTED",
+                    "message": "Password change via API not supported with Cognito. Use Cognito hosted UI or AWS console."
+                }
+            },
+        )
+    
+    try:
+        result = await auth_service.change_password(
+            user_id, request.current_password, request.new_password
+        )
+        return {
+            "message": "Password changed successfully.",
             "success": result["success"],
         }
     except ValidationError as e:

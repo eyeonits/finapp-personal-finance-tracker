@@ -14,8 +14,10 @@ class User(Base):
     __tablename__ = "users"
     
     user_id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
-    cognito_sub = Column(String(255), unique=True, nullable=False, index=True)
+    cognito_sub = Column(String(255), unique=True, nullable=True, index=True)  # Nullable for local auth
     email = Column(String(255), unique=True, nullable=False, index=True)
+    password_hash = Column(String(255), nullable=True)  # For local authentication
+    email_verified = Column(Boolean, nullable=False, default=False)  # For local auth email verification
     created_at = Column(DateTime, nullable=False, server_default=func.now())
     updated_at = Column(DateTime, nullable=False, server_default=func.now(), onupdate=func.now())
     is_active = Column(Boolean, nullable=False, default=True)
