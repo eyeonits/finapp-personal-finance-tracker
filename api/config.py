@@ -1,10 +1,11 @@
 """
 Configuration management using Pydantic settings.
 """
-from typing import List
-from pydantic import field_validator, ValidationError
+from typing import List, Optional
+from pydantic import field_validator, model_validator, ValidationError
 from pydantic_settings import BaseSettings, SettingsConfigDict
 import os
+import secrets
 from pathlib import Path
 
 
@@ -24,18 +25,24 @@ class Settings(BaseSettings):
     DATABASE_POOL_SIZE: int = 5
     DATABASE_MAX_OVERFLOW: int = 10
     
-    # AWS Cognito Settings
-    COGNITO_REGION: str
-    COGNITO_USER_POOL_ID: str
-    COGNITO_APP_CLIENT_ID: str
+    # Authentication Mode
+    # Set to True to use AWS Cognito, False for local authentication (default)
+    USE_COGNITO: bool = False
+    
+    # AWS Cognito Settings (only required if USE_COGNITO=True)
+    COGNITO_REGION: str = ""
+    COGNITO_USER_POOL_ID: str = ""
+    COGNITO_APP_CLIENT_ID: str = ""
     COGNITO_APP_CLIENT_SECRET: str = ""
     
-    # JWT Settings
-    JWT_ALGORITHM: str = "RS256"
+    # Local Auth Settings (used when USE_COGNITO=False)
+    JWT_SECRET_KEY: str = ""  # Required for local auth, auto-generated in dev if not set
+    JWT_ALGORITHM: str = "HS256"  # HS256 for local, RS256 for Cognito
     JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
+    JWT_REFRESH_TOKEN_EXPIRE_DAYS: int = 30
     
     # CORS Settings
-    CORS_ORIGINS: str = "http://localhost:3000,http://localhost:5000"
+    CORS_ORIGINS: str = "http://localhost:3000,http://localhost:5173"
     
     # Security Settings
     RATE_LIMIT_PER_MINUTE: int = 100
@@ -52,13 +59,32 @@ class Settings(BaseSettings):
             raise ValueError("DATABASE_URL must be set")
         return v
     
-    @field_validator("COGNITO_USER_POOL_ID", "COGNITO_APP_CLIENT_ID")
-    @classmethod
-    def validate_cognito_settings(cls, v: str) -> str:
-        """Validate Cognito settings are not empty."""
-        if not v:
-            raise ValueError("Cognito settings must be configured")
-        return v
+    @model_validator(mode="after")
+    def validate_auth_settings(self) -> "Settings":
+        """Validate authentication settings based on mode."""
+        if self.USE_COGNITO:
+            # Cognito mode: require Cognito settings
+            if not self.COGNITO_USER_POOL_ID or not self.COGNITO_APP_CLIENT_ID:
+                raise ValueError(
+                    "COGNITO_USER_POOL_ID and COGNITO_APP_CLIENT_ID are required when USE_COGNITO=True"
+                )
+            if not self.COGNITO_REGION:
+                raise ValueError("COGNITO_REGION is required when USE_COGNITO=True")
+            # Use RS256 for Cognito
+            self.JWT_ALGORITHM = "RS256"
+        else:
+            # Local mode: require or generate JWT secret
+            if not self.JWT_SECRET_KEY:
+                if self.ENVIRONMENT in ["development", "dev"]:
+                    # Auto-generate for development (not secure for production!)
+                    self.JWT_SECRET_KEY = "dev-secret-key-change-in-production-" + secrets.token_hex(16)
+                else:
+                    raise ValueError(
+                        "JWT_SECRET_KEY is required for local authentication in non-development environments"
+                    )
+            # Use HS256 for local auth
+            self.JWT_ALGORITHM = "HS256"
+        return self
     
     @property
     def cors_origins_list(self) -> List[str]:

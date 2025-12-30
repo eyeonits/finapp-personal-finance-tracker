@@ -1,14 +1,14 @@
 """
 Dependency injection for FastAPI endpoints.
 """
-from typing import AsyncGenerator
+from typing import AsyncGenerator, Union
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from api.config import settings
 from api.utils.db import get_db_session
 from api.utils.jwt_utils import decode_jwt_token
-from api.services.auth_service import AuthService
 from api.services.user_service import UserService
 from api.services.transaction_service import TransactionService
 from api.services.import_service import ImportService
@@ -16,6 +16,12 @@ from api.services.analytics_service import AnalyticsService
 from api.repositories.user_repository import UserRepository
 from api.repositories.transaction_repository import TransactionRepository
 from api.repositories.import_repository import ImportRepository
+
+# Conditional import based on auth mode
+if settings.USE_COGNITO:
+    from api.services.auth_service import AuthService
+else:
+    from api.services.local_auth_service import LocalAuthService
 
 
 # Security scheme for JWT Bearer tokens
@@ -63,9 +69,23 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
         yield session
 
 
-def get_auth_service() -> AuthService:
-    """Get authentication service instance."""
-    return AuthService()
+def get_auth_service(
+    user_repository: UserRepository = Depends(lambda: None),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Get authentication service instance.
+    
+    Returns Cognito AuthService or LocalAuthService based on USE_COGNITO setting.
+    """
+    if settings.USE_COGNITO:
+        from api.services.auth_service import AuthService
+        return AuthService()
+    else:
+        from api.services.local_auth_service import LocalAuthService
+        # LocalAuthService needs the user repository
+        user_repo = UserRepository(db)
+        return LocalAuthService(user_repo)
 
 
 def get_user_repository(db: AsyncSession = Depends(get_db)) -> UserRepository:
