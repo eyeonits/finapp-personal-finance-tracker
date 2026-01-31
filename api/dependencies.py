@@ -16,6 +16,8 @@ from api.services.analytics_service import AnalyticsService
 from api.repositories.user_repository import UserRepository
 from api.repositories.transaction_repository import TransactionRepository
 from api.repositories.import_repository import ImportRepository
+from api.repositories.recurring_payment_repository import RecurringPaymentRepository
+from api.services.recurring_payment_service import RecurringPaymentService
 
 # Conditional import based on auth mode
 if settings.USE_COGNITO:
@@ -169,3 +171,15 @@ def get_analytics_service(
 ) -> AnalyticsService:
     """Get analytics service instance."""
     return AnalyticsService(transaction_repository)
+
+
+def get_recurring_payment_repository(db: AsyncSession = Depends(get_db)) -> RecurringPaymentRepository:
+    """Get recurring payment repository instance."""
+    return RecurringPaymentRepository(db)
+
+
+def get_recurring_payment_service(
+    repository: RecurringPaymentRepository = Depends(get_recurring_payment_repository),
+) -> RecurringPaymentService:
+    """Get recurring payment service instance."""
+    return RecurringPaymentService(repository)

@@ -648,6 +648,13 @@ export default function Dashboard() {
               >
                 Import Transactions
               </Link>
+              <span className="text-gray-400 dark:text-gray-500">|</span>
+              <Link
+                to="/bills"
+                className="text-sm text-indigo-600 dark:text-indigo-400 hover:text-indigo-500 dark:hover:text-indigo-300 font-medium"
+              >
+                Bills & Subscriptions
+              </Link>
             </div>
             <div className="flex items-center space-x-4">
               <button

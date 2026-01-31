@@ -95,3 +95,67 @@ class DashboardMetricsResponse(BaseModel):
 class ErrorResponse(BaseModel):
     """Response model for errors."""
     error: dict
+
+
+# ==================== Recurring Payment Response Models ====================
+
+class RecurringPaymentResponse(BaseModel):
+    """Response model for a single recurring payment."""
+    payment_id: str
+    name: str
+    description: Optional[str]
+    amount: Decimal
+    frequency: str
+    due_day: Optional[int]
+    category: Optional[str]
+    payee: Optional[str]
+    account_id: Optional[str]
+    is_active: bool
+    start_date: date
+    end_date: Optional[date]
+    reminder_days: Optional[int]
+    auto_pay: bool
+    notes: Optional[str]
+    created_at: datetime
+    updated_at: datetime
+
+
+class RecurringPaymentListResponse(BaseModel):
+    """Response model for list of recurring payments."""
+    payments: List[RecurringPaymentResponse]
+    total: int
+    limit: int
+    offset: int
+
+
+class PaymentRecordResponse(BaseModel):
+    """Response model for a single payment record."""
+    record_id: str
+    payment_id: str
+    due_date: date
+    paid_date: Optional[date]
+    amount_due: Decimal
+    amount_paid: Optional[Decimal]
+    status: str
+    transaction_id: Optional[str]
+    notes: Optional[str]
+    created_at: datetime
+    updated_at: datetime
+
+
+class PaymentRecordListResponse(BaseModel):
+    """Response model for list of payment records."""
+    records: List[PaymentRecordResponse]
+    total: int
+    limit: int
+    offset: int
+
+
+class PaymentSummaryResponse(BaseModel):
+    """Response model for payment summary."""
+    total_recurring_payments: int
+    estimated_monthly_total: Decimal
+    upcoming_count: int
+    upcoming_total: Decimal
+    overdue_count: int
+    overdue_total: Decimal

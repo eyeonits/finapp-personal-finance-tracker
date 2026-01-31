@@ -76,3 +76,56 @@ class TransactionFilters(BaseModel):
     amount_max: Optional[Decimal] = None
     limit: int = Field(default=100, le=1000)
     offset: int = Field(default=0, ge=0)
+
+
+# ==================== Recurring Payment Request Models ====================
+
+class CreateRecurringPaymentRequest(BaseModel):
+    """Request model for creating a recurring payment."""
+    name: str = Field(min_length=1, max_length=255)
+    amount: Decimal = Field(gt=0)
+    frequency: str = Field(pattern="^(weekly|monthly|quarterly|yearly)$")
+    start_date: date
+    due_day: Optional[int] = Field(default=None, ge=1, le=31)
+    description: Optional[str] = Field(default=None, max_length=500)
+    category: Optional[str] = Field(default=None, max_length=100)
+    payee: Optional[str] = Field(default=None, max_length=255)
+    account_id: Optional[str] = Field(default=None, max_length=100)
+    end_date: Optional[date] = None
+    reminder_days: Optional[int] = Field(default=3, ge=0)
+    auto_pay: bool = False
+    notes: Optional[str] = None
+
+
+class UpdateRecurringPaymentRequest(BaseModel):
+    """Request model for updating a recurring payment."""
+    name: Optional[str] = Field(default=None, min_length=1, max_length=255)
+    description: Optional[str] = Field(default=None, max_length=500)
+    amount: Optional[Decimal] = Field(default=None, gt=0)
+    frequency: Optional[str] = Field(default=None, pattern="^(weekly|monthly|quarterly|yearly)$")
+    due_day: Optional[int] = Field(default=None, ge=1, le=31)
+    category: Optional[str] = Field(default=None, max_length=100)
+    payee: Optional[str] = Field(default=None, max_length=255)
+    account_id: Optional[str] = Field(default=None, max_length=100)
+    is_active: Optional[bool] = None
+    end_date: Optional[date] = None
+    reminder_days: Optional[int] = Field(default=None, ge=0)
+    auto_pay: Optional[bool] = None
+    notes: Optional[str] = None
+
+
+class MarkPaymentPaidRequest(BaseModel):
+    """Request model for marking a payment as paid."""
+    paid_date: date
+    amount_paid: Decimal = Field(gt=0)
+    transaction_id: Optional[str] = None
+
+
+class SkipPaymentRequest(BaseModel):
+    """Request model for skipping a payment."""
+    notes: Optional[str] = None
+
+
+class GeneratePaymentRecordsRequest(BaseModel):
+    """Request model for generating payment records."""
+    months_ahead: int = Field(default=3, ge=1, le=12)

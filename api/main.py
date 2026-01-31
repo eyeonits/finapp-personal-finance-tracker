@@ -6,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from api.config import settings
 from api.middleware.auth import jwt_auth_middleware
-from api.routers import auth, transactions, imports, analytics, health
+from api.routers import auth, transactions, imports, analytics, health, recurring_payments
 
 
 def create_app() -> FastAPI:
@@ -37,6 +37,7 @@ def create_app() -> FastAPI:
     app.include_router(transactions.router, prefix="/api/v1/transactions", tags=["transactions"])
     app.include_router(imports.router, prefix="/api/v1/imports", tags=["imports"])
     app.include_router(analytics.router, prefix="/api/v1/analytics", tags=["analytics"])
+    app.include_router(recurring_payments.router, prefix="/api/v1/recurring-payments", tags=["recurring-payments"])
 
     return app
 
